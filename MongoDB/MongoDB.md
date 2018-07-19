@@ -116,9 +116,22 @@ db.news.update({name:'QQ'},{name:'MSN'});
 即--新文档直接替换了旧文档,而不是修改
 
 > 如果是想修改文档的某列,可以用$set关键字
+
 ```
 db.collectionName.update(query,{$set:{name:’QQ’}})
 ```
+> 检查一个值是否存在，如果不存在则添加，没有则不添加 $addToSet
+
+```
+db.workmate.update({name:"xiaoWang"},{$addToSet:{interest:"readBook"}})
+```
+>  批量追加 $each
+
+```
+var newInterset=["Sing","Dance","Code"];
+db.workmate.update({name:"xiaoWang"},{$addToSet:{interest:{$each:newInterset}}})
+```
+
 ==修改时的赋值表达式==
 
 - $set  修改某列的值
@@ -150,7 +163,16 @@ db.news.update({_id:99},{x:123,y:234},{upsert:true});
 db.news.update({age:21},{$set:{age:22}},{multi:true});
 ```
 
+- findAndModify 查找并修改
 
+```
+query：需要查询的条件/文档
+sort:    进行排序
+remove：[boolean]是否删除查找到的文档，值填写true，可以删除。
+new:[boolean]返回更新前的文档还是更新后的文档。
+fields：需要返回的字段
+upsert：没有这个值是否增加。
+```
 
 ---
 #### 查: find, findOne
@@ -177,16 +199,102 @@ db.stu.find({},{gendre:1})
 db.stu.find({gender:’male’},{name:1,_id:0});
 ```
 
+- 例五：查询年龄在25-33之间的人  ==$in==
+
+```
+db.workmate.find({age:{$in:[25,33]}},{name:1,"skill.skillOne":1,age:1,_id:0})
+```
+
+- 例六：查询人群中年龄大于30或者会php的  ==$or==
+```
+db.workmate.find({$or:[
+    {age:{$gte:30}},
+    {"skill.skillThree":'PHP'}
+]},
+    {name:1,"skill.skillThree":1,age:1,_id:0}
+)
+```
+
+- 例七：要查找除年龄大于20岁，小于30岁的人员信息 ==$not==
+
+```
+db.workmate.find({
+    age:{
+        $not:{
+            $lte:30,
+            $gte:20
+        }
+    }
+},
+{name:1,"skill.skillOne":1,age:1,_id:0}
+)
+```
+
+###### 基本数组查询
+
+- 例1： 查出看兴趣中有看电影的员工信息
+
+```
+db.workmate.find({interest:'看电影'},
+    {name:1,interest:1,age:1,_id:0} 
+)
+```
+
+- 例2：查询出喜欢看电影和看书的人员信息  ==$all= 
+
+```
+db.workmate.find(
+    {interest:{$all:["看电影","看书"]}},
+    {name:1,interest:1,age:1,_id:0} 
+)
+```
+
+- 例3：查询爱好中有看电影的或者看书的员工信息。  ==$in==
+
+```
+db.workmate.find(
+    {interest:{$in:["看电影","看书"]}},
+    {name:1,interest:1,age:1,_id:0} 
+)
+```
+
+- 例4： 显示每个人兴趣的前两项 ==$slice==
+
+```
+db.workmate.find(
+    {},
+    {name:1,interest:{$slice:2},age:1,_id:0} 
+)
+```
+
+###### find参数：
 
 
+参数 | 作用
+---|---
+query |这个就是查询条件，MongoDB默认的第一个参数。
+fields|（返回内容）查询出来后显示的结果样式，可以用true和false控制是否显示。
+limit|返回的数量，后边跟数字，控制每次查询返回的结果数量。
+skip|跳过多少个显示，和limit结合可以实现分页。
+sort|排序方式，从小到大排序使用1，从大到小排序使用-1。
+
+- 例1：我们把同事集合（collections）进行分页，每页显示两个，并且按照年龄从小到大的顺序排列
+```
+db.workmate.find({},{name:true,age:true,_id:false}).limit(0).skip(2).sort({age:1});
+```
+
+- hasNext 游标 
+```
+var db = connect("company")  //进行链接对应的集合collections
+var result = db.workmate.find() //声明变量result，并把查询结果赋值给result
+//利用游标的hasNext()进行循环输出结果。
+while(result.hasNext()){
+    printjson(result.next())  //用json格式打印结果
+}
+```
 
 
-
-
-
-
-
->查询表达式:
+> 查询表达式:
 
 
 
