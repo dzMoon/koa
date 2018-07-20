@@ -1,4 +1,4 @@
-# mongoDB
+# mongoDB 基础
 > 特点:内部执行引擎为JS解释器, 把文档存储成bson结构,在查询时,转换为JS对象,并可以通过熟悉的js语法来操作.
 
 
@@ -330,3 +330,159 @@ $nor  | 所有条件都不满足的文档为真返回|{$nor,[条件1,条件2]}
 - dbpath 数据存储目录
 - logpath 日志存储目录
 - port 运行端口(默认27017)
+
+
+
+
+---
+ 
+# MOngoDB高级用法
+
+### 索引
+
+> 数据不超万条时，不需要使用索引。性能的提升并不明显，而大大增加了内存和硬盘的消耗。
+
+> 查询数据超过表数据量30%时，不要使用索引字段查询。实际证明会比不使用索引更慢，因为它大量检索了索引表和我们原表。
+
+> 数字索引，要比字符串索引快的多，在百万级甚至千万级数据量面前，使用数字索引是个明确的选择。
+
+> 把你经常查询的数据做成一个内嵌数据（对象型的数据），然后集体进行索引。
+
+- 建立索引  为用索引
+```
+db.randomInfo.ensureIndex({username:1})
+```
+
+- 删除索引
+```
+db.randomInfo.dropIndex('name')
+```
+- 查询索引
+```
+db.randomInfo.getIndexes()
+```
+- 指定索引查询 ==hint==
+
+```
+var  rs= db.randomInfo.find({username:'7xwb8y3',randNum0:565509}).hint({randNum0:1});
+```
+
+- 全文索引
+
+```
+db.info.ensureIndex({contextInfo:'text'}) //建立全文索引
+db.info.find({$text:{$search:"programmer"}}) // 全文索引查找
+db.info.find({$text:{$search:"programmer family diary -drink"}}) // 如果我们这时候希望不查找出来有drink这个单词的记录，我们可以使用“-”减号来取消。
+db.info.find({$text:{$search:"\"love PlayGame\" drink"}}) //全文搜索中是支持转义符的，比如我们想搜索的是两个词（love PlayGame和drink），这时候需要使用\斜杠来转意。
+
+```
+
+
+---
+
+# 管理:用户的创建、删除与修改
+
+> 创建用户
+
+```
+db.createUser({
+    user:"jspang",
+    pwd:"123456",
+    customData:{
+        name:'技术胖',
+        email:'web0432@126.com',
+        age:18,
+    },
+    roles:[
+        {
+            role:"readWrite",
+            db:"company"  //指定表
+        },
+        'read'
+    ]
+})
+```
+
+> 内置角色
+
+- 数据库用户角色：read、readWrite；
+- 数据库管理角色：dbAdmin、dbOwner、userAdmin;
+- 集群管理角色：clusterAdmin、clusterManager、clusterMonitor、hostManage；
+- 备份恢复角色：backup、restore；
+- 所有数据库角色：readAnyDatabase、readWriteAnyDatabase、userAdminAnyDatabase、dbAdminAnyDatabase
+- 超级用户角色：root
+- 内部角色：__system
+
+> 查找用户信息
+
+```
+db.system.users.find()
+```
+
+> 删除用户
+
+```
+db.system.users.remove({user:"jspang"})
+```
+
+> 建权
+
+- 有时候我们要验证用户的用户名密码是否正确，就需要用到MongoDB提供的健全操作。也算是一种登录操作，不过MongoDB把这叫做建权。
+```
+db.auth("jspang","123456")
+```
+
+> 启动建权
+
+- 重启MongoDB服务器，然后设置必须使用建权登录。
+
+```
+mongod --auth
+```
+
+> 登录
+
+- 如果在配置用户之后，用户想登录，可以使用mongo的形式，不过需要配置用户名密码：
+```
+mongo -u jspang -p 123456 127.0.0.1:27017/admin
+```
+
+# 管理：备份和还原
+
+> 数据备份
+
+```
+mongodump
+    --host 127.0.0.1
+    --port 27017
+    --out D:/databack/backup
+    --collection myCollections
+    --db test
+    --username username
+    --password password
+```
+- 比如现在我们备份所有MongoDB里的库到D盘的databack文件夹下，就可以把命令写成这样
+```
+mongodump --host 127.0.0.1 --port 27017 --out D:/databack/
+```
+> 数据恢复
+
+```
+mongorestore
+    --host 127.0.0.1
+    --port 27017
+    --username username
+    --password password
+    <path to the backup>
+```
+
+- 比如我们现在不小心删除了一个collections的数据，要进行恢复。现在删除randomInfo集合。
+
+```
+db.randomInfo.drop()
+```
+- 使用命令进行恢复
+
+```
+mongorestore --host 127.0.0.1 --port 27017 D:/databack/
+```
